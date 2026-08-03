@@ -2,213 +2,201 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Memory Master - Telegram Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Meteor Dodge</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #0f172a;
-      color: #ffffff;
-      text-align: center;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      background: #090a0f;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+      overflow: hidden;
     }
-    .container {
-      max-width: 350px;
-      margin: 0 auto;
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 20px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    #gameCard {
+      max-width: 360px;
+      margin: 10px auto;
+      position: relative;
     }
-    .stats {
-      font-size: 20px;
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
       font-weight: bold;
-      margin-bottom: 15px;
+      font-size: 18px;
       color: #38bdf8;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-      margin: 20px 0;
+    canvas {
+      background: #111827;
+      border: 2px solid #374151;
+      border-radius: 12px;
+      display: block;
+      margin: 0 auto;
     }
-    .btn-color {
-      height: 110px;
-      border-radius: 15px;
-      border: none;
-      cursor: pointer;
-      opacity: 0.6;
-      transition: opacity 0.2s, transform 0.1s;
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding: 0 10px;
     }
-    .btn-color:active { transform: scale(0.95); }
-    .active { opacity: 1 !important; box-shadow: 0 0 20px #fff; }
-    
-    #red { background-color: #ef4444; }
-    #blue { background-color: #3b82f6; }
-    #green { background-color: #22c55e; }
-    #yellow { background-color: #eab308; }
-
-    #startBtn {
-      background: #8b5cf6;
+    .btn-ctrl {
+      background: #3b82f6;
       color: white;
       border: none;
-      padding: 12px 30px;
-      font-size: 18px;
+      width: 45%;
+      padding: 15px;
+      font-size: 24px;
+      border-radius: 12px;
       font-weight: bold;
-      border-radius: 10px;
-      cursor: pointer;
-      width: 100%;
+      touch-action: manipulation;
     }
-    #msg {
-      margin-top: 15px;
+    .btn-ctrl:active { background: #2563eb; }
+    #restartBtn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 18px;
+      border-radius: 10px;
+      width: 90%;
+      margin-top: 10px;
       font-weight: bold;
-      min-height: 24px;
+      display: none;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h2>🧠 Memory Master</h2>
-    <div class="stats">LEVEL: <span id="level">1</span></div>
-    
-    <div class="grid">
-      <button id="red" class="btn-color" onclick="userClick('red')"></button>
-      <button id="blue" class="btn-color" onclick="userClick('blue')"></button>
-      <button id="green" class="btn-color" onclick="userClick('green')"></button>
-      <button id="yellow" class="btn-color" onclick="userClick('yellow')"></button>
+  <div id="gameCard">
+    <div class="hud">
+      <span>LEVEL: <span id="lvl">1</span></span>
+      <span>SKOR: <span id="score">0</span></span>
     </div>
 
-    <div id="msg">Tekan "MULAI" untuk main!</div>
-    <br>
-    <button id="startBtn" onclick="startGame()">🚀 MULAI GAME</button>
+    <canvas id="canvas" width="320" height="400"></canvas>
+
+    <div class="controls">
+      <button class="btn-ctrl" onmousedown="moveLeft()" ontouchstart="moveLeft()">◀ KIRI</button>
+      <button class="btn-ctrl" onmousedown="moveRight()" ontouchstart="moveRight()">KANAN ▶</button>
+    </div>
+
+    <button id="restartBtn" onclick="resetGame()">🔄 MAIN LAGI</button>
   </div>
 
   <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    const colors = ['red', 'blue', 'green', 'yellow'];
-    let gameSequence = [];
-    let userSequence = [];
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let player = { x: 140, y: 350, size: 30, speed: 25 };
+    let meteors = [];
+    let score = 0;
     let level = 1;
-    let isPlaying = false;
+    let gameOver = false;
+    let gameInterval, meteorInterval;
 
-    function startGame() {
-      gameSequence = [];
-      userSequence = [];
-      level = 1;
-      isPlaying = true;
-      document.getElementById('level').innerText = level;
-      document.getElementById('startBtn').style.display = 'none';
-      document.getElementById('msg').innerText = "Ingat urutannya!";
-      nextRound();
+    function drawPlayer() {
+      ctx.font = "28px sans-serif";
+      ctx.fillText("🚀", player.x, player.y + 25);
     }
 
-    function nextRound() {
-      userSequence = [];
-      document.getElementById('msg').innerText = `Level ${level} - Perhatikan!`;
-      
-      // Pilih warna acak baru
-      const randomColor = colors[Math.floor(Math.random() * 4)];
-      gameSequence.push(randomColor);
+    function moveLeft() {
+      if (gameOver) return;
+      if (player.x > 10) player.x -= player.speed;
+    }
 
-      // Mainkan animasi kedip urutan warna
-      let i = 0;
-      const interval = setInterval(() => {
-        flashButton(gameSequence[i]);
-        i++;
-        if (i >= gameSequence.length) {
-          clearInterval(interval);
-          setTimeout(() => {
-            document.getElementById('msg').innerText = "Sekarang Giliranmu!";
-          }, 500);
+    function moveRight() {
+      if (gameOver) return;
+      if (player.x < canvas.width - 35) player.x += player.speed;
+    }
+
+    function spawnMeteor() {
+      if (gameOver) return;
+      let x = Math.random() * (canvas.width - 30);
+      let speed = 2 + level * 0.8; // Meteor makin cepat tiap naik level
+      meteors.push({ x: x, y: -30, speed: speed });
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+
+      // Update & Gambar Meteor
+      for (let i = 0; i < meteors.length; i++) {
+        let m = meteors[i];
+        m.y += m.speed;
+
+        ctx.font = "24px sans-serif";
+        ctx.fillText("☄️", m.x, m.y);
+
+        // Cek Tabrakan (Hitbox sederhana)
+        if (
+          m.y + 20 >= player.y &&
+          m.y <= player.y + 30 &&
+          m.x + 25 >= player.x &&
+          m.x <= player.x + 30
+        ) {
+          endGame();
         }
-      }, 700);
-    }
 
-    function flashButton(color) {
-      const btn = document.getElementById(color);
-      btn.classList.add('active');
-      setTimeout(() => btn.classList.remove('active'), 400);
-    }
+        // Meteor lolos ke bawah -> Tambah Skor
+        if (m.y > canvas.height) {
+          meteors.splice(i, 1);
+          score += 10;
+          document.getElementById('score').innerText = score;
 
-    function userClick(color) {
-      if (!isPlaying) return;
-
-      flashButton(color);
-      userSequence.push(color);
-
-      // Cek apakah tebakan pengguna benar
-      const currentIndex = userSequence.length - 1;
-      if (userSequence[currentIndex] !== gameSequence[currentIndex]) {
-        // Game Over jika salah
-        document.getElementById('msg').innerText = `💥 GAME OVER! Kamu bertahan sampai Level ${level}`;
-        document.getElementById('startBtn').innerText = "🔄 COBA LAGI";
-        document.getElementById('startBtn').style.display = 'block';
-        isPlaying = false;
-        return;
+          // Naik Level tiap kelipatan 50 skor
+          let newLvl = Math.floor(score / 50) + 1;
+          if (newLvl !== level) {
+            level = newLvl;
+            document.getElementById('lvl').innerText = level;
+          }
+        }
       }
 
-      // Jika berhasil menyelesaikan 1 urutan level
-      if (userSequence.length === gameSequence.length) {
-        level++;
-        document.getElementById('level').innerText = level;
-        document.getElementById('msg').innerText = "🎉 Keren! Lanjut Level Berikutnya...";
-        setTimeout(nextRound, 1200);
-      }
+      requestAnimationFrame(update);
     }
+
+    function endGame() {
+      gameOver = true;
+      clearInterval(meteorInterval);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "bold 24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("💥 GAME OVER!", canvas.width / 2, 180);
+      ctx.fillStyle = "#fff";
+      ctx.font = "16px sans-serif";
+      ctx.fillText("Skor Akhir: " + score, canvas.width / 2, 210);
+
+      document.getElementById('restartBtn').style.display = 'block';
+    }
+
+    function resetGame() {
+      player.x = 140;
+      meteors = [];
+      score = 0;
+      level = 1;
+      gameOver = false;
+      document.getElementById('score').innerText = '0';
+      document.getElementById('lvl').innerText = '1';
+      document.getElementById('restartBtn').style.display = 'none';
+
+      clearInterval(meteorInterval);
+      meteorInterval = setInterval(spawnMeteor, 600);
+      update();
+    }
+
+    // Jalankan awal
+    resetGame();
   </script>
 </body>
 </html>
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 8px;
-      font-weight: bold;
-    }
-    #message { margin-top: 15px; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>🧩 Teka Teki Angka</h2>
-    <p>Tebak angka rahasia antara <b>1 sampai 10</b>!</p>
-    <input type="number" id="userGuess" min="1" max="10" placeholder="?"><br>
-    <button onclick="checkGuess()">TEBAK!</button>
-    <div id="message"></div>
-  </div>
-
-  <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
-    const secretNumber = Math.floor(Math.random() * 10) + 1;
-    let attempts = 0;
-
-    function checkGuess() {
-      const guess = parseInt(document.getElementById('userGuess').value);
-      const msg = document.getElementById('message');
-      attempts++;
-
-      if (!guess || guess < 1 || guess > 10) {
-        msg.innerText = "Masukkan angka 1 sampai 10 ya!";
-        msg.style.color = "#ffbd59";
-        return;
-      }
-
-      if (guess === secretNumber) {
-        msg.innerText = `🎉 BENAR! Kamu menebak dalam ${attempts} kali percobaan!`;
-        msg.style.color = "#4edf7a";
-      } else if (guess < secretNumber) {
-        msg.innerText = "❌ Terlalu KECIL! Coba lagi.";
-        msg.style.color = "#e94560";
-      } else {
-        msg.innerText = "❌ Terlalu BESAR! Coba lagi.";
-        msg.style.color = "#e94560";
-      }
-    }
-  </script>
-</body>
-  </html>
-  
