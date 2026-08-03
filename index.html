@@ -3,37 +3,166 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teka Teki Menyenangkan</title>
+  <title>Memory Master - Telegram Game</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body {
-      font-family: sans-serif;
-      background-color: #1a1a2e;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #0f172a;
       color: #ffffff;
       text-align: center;
-      padding: 20px;
       margin: 0;
-    }
-    .card {
-      background: #16213e;
       padding: 20px;
-      border-radius: 15px;
+    }
+    .container {
       max-width: 350px;
-      margin: 20px auto;
+      margin: 0 auto;
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
-    input {
-      padding: 10px;
-      width: 60px;
-      font-size: 18px;
-      text-align: center;
-      border-radius: 8px;
-      border: none;
+    .stats {
+      font-size: 20px;
+      font-weight: bold;
       margin-bottom: 15px;
+      color: #38bdf8;
     }
-    button {
-      background-color: #0f3460;
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .btn-color {
+      height: 110px;
+      border-radius: 15px;
+      border: none;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-color:active { transform: scale(0.95); }
+    .active { opacity: 1 !important; box-shadow: 0 0 20px #fff; }
+    
+    #red { background-color: #ef4444; }
+    #blue { background-color: #3b82f6; }
+    #green { background-color: #22c55e; }
+    #yellow { background-color: #eab308; }
+
+    #startBtn {
+      background: #8b5cf6;
       color: white;
       border: none;
+      padding: 12px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+    }
+    #msg {
+      margin-top: 15px;
+      font-weight: bold;
+      min-height: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>🧠 Memory Master</h2>
+    <div class="stats">LEVEL: <span id="level">1</span></div>
+    
+    <div class="grid">
+      <button id="red" class="btn-color" onclick="userClick('red')"></button>
+      <button id="blue" class="btn-color" onclick="userClick('blue')"></button>
+      <button id="green" class="btn-color" onclick="userClick('green')"></button>
+      <button id="yellow" class="btn-color" onclick="userClick('yellow')"></button>
+    </div>
+
+    <div id="msg">Tekan "MULAI" untuk main!</div>
+    <br>
+    <button id="startBtn" onclick="startGame()">🚀 MULAI GAME</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const colors = ['red', 'blue', 'green', 'yellow'];
+    let gameSequence = [];
+    let userSequence = [];
+    let level = 1;
+    let isPlaying = false;
+
+    function startGame() {
+      gameSequence = [];
+      userSequence = [];
+      level = 1;
+      isPlaying = true;
+      document.getElementById('level').innerText = level;
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('msg').innerText = "Ingat urutannya!";
+      nextRound();
+    }
+
+    function nextRound() {
+      userSequence = [];
+      document.getElementById('msg').innerText = `Level ${level} - Perhatikan!`;
+      
+      // Pilih warna acak baru
+      const randomColor = colors[Math.floor(Math.random() * 4)];
+      gameSequence.push(randomColor);
+
+      // Mainkan animasi kedip urutan warna
+      let i = 0;
+      const interval = setInterval(() => {
+        flashButton(gameSequence[i]);
+        i++;
+        if (i >= gameSequence.length) {
+          clearInterval(interval);
+          setTimeout(() => {
+            document.getElementById('msg').innerText = "Sekarang Giliranmu!";
+          }, 500);
+        }
+      }, 700);
+    }
+
+    function flashButton(color) {
+      const btn = document.getElementById(color);
+      btn.classList.add('active');
+      setTimeout(() => btn.classList.remove('active'), 400);
+    }
+
+    function userClick(color) {
+      if (!isPlaying) return;
+
+      flashButton(color);
+      userSequence.push(color);
+
+      // Cek apakah tebakan pengguna benar
+      const currentIndex = userSequence.length - 1;
+      if (userSequence[currentIndex] !== gameSequence[currentIndex]) {
+        // Game Over jika salah
+        document.getElementById('msg').innerText = `💥 GAME OVER! Kamu bertahan sampai Level ${level}`;
+        document.getElementById('startBtn').innerText = "🔄 COBA LAGI";
+        document.getElementById('startBtn').style.display = 'block';
+        isPlaying = false;
+        return;
+      }
+
+      // Jika berhasil menyelesaikan 1 urutan level
+      if (userSequence.length === gameSequence.length) {
+        level++;
+        document.getElementById('level').innerText = level;
+        document.getElementById('msg').innerText = "🎉 Keren! Lanjut Level Berikutnya...";
+        setTimeout(nextRound, 1200);
+      }
+    }
+  </script>
+</body>
+</html>
       padding: 10px 20px;
       font-size: 16px;
       border-radius: 8px;
