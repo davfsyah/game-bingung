@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teka Teki Menyenangkan</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #1a1a2e;
+      color: #ffffff;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+    .card {
+      background: #16213e;
+      padding: 20px;
+      border-radius: 15px;
+      max-width: 350px;
+      margin: 20px auto;
+    }
+    input {
+      padding: 10px;
+      width: 60px;
+      font-size: 18px;
+      text-align: center;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 15px;
+    }
+    button {
+      background-color: #0f3460;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    #message { margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🧩 Teka Teki Angka</h2>
+    <p>Tebak angka rahasia antara <b>1 sampai 10</b>!</p>
+    <input type="number" id="userGuess" min="1" max="10" placeholder="?"><br>
+    <button onclick="checkGuess()">TEBAK!</button>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    const secretNumber = Math.floor(Math.random() * 10) + 1;
+    let attempts = 0;
+
+    function checkGuess() {
+      const guess = parseInt(document.getElementById('userGuess').value);
+      const msg = document.getElementById('message');
+      attempts++;
+
+      if (!guess || guess < 1 || guess > 10) {
+        msg.innerText = "Masukkan angka 1 sampai 10 ya!";
+        msg.style.color = "#ffbd59";
+        return;
+      }
+
+      if (guess === secretNumber) {
+        msg.innerText = `🎉 BENAR! Kamu menebak dalam ${attempts} kali percobaan!`;
+        msg.style.color = "#4edf7a";
+      } else if (guess < secretNumber) {
+        msg.innerText = "❌ Terlalu KECIL! Coba lagi.";
+        msg.style.color = "#e94560";
+      } else {
+        msg.innerText = "❌ Terlalu BESAR! Coba lagi.";
+        msg.style.color = "#e94560";
+      }
+    }
+  </script>
+</body>
+  </html>
+  
